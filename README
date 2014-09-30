@@ -1,0 +1,198 @@
+==============
+= Submodules =
+==============
+
+The sigmund project uses an external JS library as a submodule. After pulling this project from the repo, make sure to run the following commands to pull down the submodule repositories:
+
+git submodule init
+git submodule update
+
+You should now see awe.js in <project>/js/awe-core
+
+===================
+= API integration =
+===================
+
+Here's how API calls can be implemented:
+
+- There's a global object called gService with functions for each HTTP request, for example gService.getGroups(callback)
+  would send a request for the current user's groups to the server and then call the callback when the data was received
+- There's a second global object called gData which works very closely with gService. When you call gService.getGroups(
+  callback), that method will cache the results in the gData object before calling callback. So the callback can then just
+  use gData.groups() to get the array of groups for the user, or the map gData.groupsById to access groups by object id.
+- All of the gService functions return fake data right now. Here's an example of how they would be changed to use real
+  data:
+  
+  _i.getGroups = function(callback) {
+    new injectJS( "http://buzzdb:8080/buzzAPI/getGroups?user_id=" + user_id, function(data) {
+      gData.addGroups(data);
+      callback && callback(data);
+    } );
+  }
+  
+  What injectJS does is it adds a script tag to the DOM that fetches JSONP data from the given URL. The callback function
+  above is automatically called by the temporary script tag and then the script is removed from the DOM. That function can
+  be used for all HTTP requests but bear in mind it only supports GET requests which is why I requested an API that doesn't
+  rely on PUT/POST/DELETE requests for Sigmund.
+
+===================================================
+= Data types currently used in place of real data =
+===================================================
+
+The data structures we're currently using are listed below along with a comment listing which web services are required
+for each. get-all returns all for the current user, get returns a single item by id, create/delete for data that the user
+can edit in the application
+
+
+// requires get-all/create/delete
+group = {
+  id: 1,
+  name: "a group",
+  stocks: ["MSFT", "RHT", "FTI"]
+}
+
+// requires get-all/get
+stock = {
+  ticker: "MMM",
+  name: "3M Co.",
+  data: [
+    {
+      dateTime: new Date(2012,0,1),
+      price: 10.54,
+      positiveSentiment: 0.7,
+      negativeSentiment: 0.8
+    },
+    {
+      dateTime: new Date(2012,0,2),
+      price: 10.58,
+      positiveSentiment: 0.8,
+      negativeSentiment: 0.5
+    },
+    {
+      dateTime: new Date(2012,0,3),
+      price: 10.22,
+      positiveSentiment: 0.3,
+      negativeSentiment: 0.9
+    },
+  ]
+}
+
+// indirect access, probably embedded in time window prediction data
+newsItem = {
+  source_id: 4942,
+  weight: 0.5,
+  combinedSentimentIndex: 0,
+  text: "Obama Proposes Tax Revamp",
+  url: "http://online.wsj.com/article/SB10001424052970204131004577237771704513042.html?mod=ITP_pageone_0"
+}
+
+
+// requires get-all/get
+prediction = {
+  stock : "MSFT",
+  prediction: 1,  // (range is -2 to +2)
+  confidence: 0.6,
+  contributing_sources: {
+    "yahoo": {
+      contribution: 0.5,
+      words: [{
+        word: "revolutionary",
+        contribution: 0.8,
+      }, {
+        word: "sales cycle",
+        contribution: 0.4,
+      }, {
+        word: "inventory",
+        contribution: 0.1,
+      }, {
+        word: "worthless",
+        contribution: 0.8,
+      }
+    ]},
+    "twitter": {
+      contribution: 0.3,
+      words: [{
+        word: "awesome",
+        contribution: 0.8,
+      }, {
+        word: "value",
+        contribution: 0.4,
+      }, {
+        word: "flat",
+        contribution: 0.1,
+      }, {
+        word: "awesome",
+        contribution: 0.8,
+      }
+    ]}
+  },
+  other_sources: {
+    "yahoo": {
+      contribution: 0.5,
+      words: [{
+        word: "revolutionary",
+        contribution: 0.8,
+      }, {
+        word: "sales cycle",
+        contribution: 0.4,
+      }, {
+        word: "inventory",
+        contribution: 0.1,
+      }, {
+        word: "worthless",
+        contribution: 0.8,
+      }
+    ]},
+    "twitter": {
+      contribution: 0.3,
+      words: [{
+        word: "awesome",
+        contribution: 0.8,
+      }, {
+        word: "value",
+        contribution: 0.4,
+      }, {
+        word: "flat",
+        contribution: 0.1,
+      }, {
+        word: "awesome",
+        contribution: 0.8,
+      }
+    ]}
+  }
+}
+
+// Alerts requires get-all/create/delete. Below are the four types of alert, each type having different data
+
+// Price alert
+alert = {
+  id: 1,
+  stock: null,
+  type: "price",
+  price: 200
+}
+
+// Sentiment ratio alert
+alert = {
+  id: 1,
+  stock: null,
+  type: "sentiment-ratio",
+  ratio: 2
+}
+
+// Keyword alert
+alert = {
+  id: 1,
+  stock: null,
+  type: "keyword-impact",
+  keyword: "Earnings"
+}
+
+// Prediction alert
+alert = {
+  id: 1,
+  stock: null,
+  type: "prediction",
+  prediction: 1,
+  confidence: 0.6
+}
